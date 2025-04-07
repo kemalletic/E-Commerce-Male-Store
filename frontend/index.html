@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+<body>
+    <header id="navbar">
+        <button id="menu-toggle" class="hamburger">&#9776;</button> <!-- Hamburger button -->
+
+        <nav>
+            <a href="./index.html">Home</a>
+            
+            <div class="dropdown">
+                <button class="dropbtn">Categories</button>
+                <div class="dropdown-content">
+                    <a href="./pages/shirts.html">Shirts</a>
+                    <a href="./pages/jackets.html">Jackets</a>
+                    <a href="./pages/perfumes.html">Perfumes</a>
+                    <a href="./pages/sneakers.html">Sneakers</a>
+                    <a href="./pages/tracksuits.html">Tracksuits</a>
+                </div>
+            </div>
+
+            <a href="./pages/cart.html">Cart</a>
+            <a href="./pages/user-profile.html">Profile</a>
+            <a href="./pages/admin-dashboard.html" id="admin-dashboard-btn" style="display: none;">Admin Dashboard</a>
+
+            <!-- Authentication Links -->
+            <div class="auth-links">
+                <a href="./pages/login.html" id="login-btn">Login</a>
+                <a href="./pages/register.html" id="register-btn">Register</a>
+                <a href="#" id="logout-btn" class="hidden">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Welcome to Our E-Commerce Store</h1>
+            <p>Discover the latest tech & fashion at unbeatable prices.</p>
+            <a href="#featured-categories" class="btn">Shop Now</a>
+        </section>
+
+        <section id="featured-categories">
+            <h2>Shop by Category</h2>
+            <div class="featured-category-grid">
+                <div class="featured-category-item" onclick="window.location.href='./pages/shirts.html'">
+                    <img src="./assets/images/mentshirt.jpg" alt="Shirts" class="featured-category-image">
+                    <div class="category-overlay">
+                        <h3>Shirts</h3>
+                    </div>
+                </div>
+                <div class="featured-category-item" onclick="window.location.href='./pages/jackets.html'">
+                    <img src="./assets/images/menjacket.jpg" alt="Jackets" class="featured-category-image">
+                    <div class="category-overlay">
+                        <h3>Jackets</h3>
+                    </div>
+                </div>
+                <div class="featured-category-item" onclick="window.location.href='./pages/perfumes.html'">
+                    <img src="./assets/images/menperfumes.jpg" alt="Perfumes" class="featured-category-image">
+                    <div class="category-overlay">
+                        <h3>Perfumes</h3>
+                    </div>
+                </div>
+                <div class="featured-category-item" onclick="window.location.href='./pages/sneakers.html'">
+                    <img src="./assets/images/mensneakers.webp" alt="Sneakers" class="featured-category-image">
+                    <div class="category-overlay">
+                        <h3>Sneakers</h3>
+                    </div>
+                </div>
+                <div class="featured-category-item" onclick="window.location.href='./pages/tracksuits.html'">
+                    <img src="./assets/images/mentracksuits.jpg" alt="Tracksuits" class="featured-category-image">
+                    <div class="category-overlay">
+                        <h3>Tracksuits</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 E-Commerce Website. All rights reserved.</p>
+    </footer>
+
+    <script src="./assets/js/navbar.js"></script>
+</body>
+</html>
