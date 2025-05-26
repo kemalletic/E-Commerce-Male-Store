@@ -114,6 +114,29 @@ define('JWT_SECRET', 'your-secret-key-123');
 // Define base URL without trailing slash
 define('BASE_URL', 'http://localhost:8080');
 
+// Define environment
+define('ENVIRONMENT', 'development');
+
+// Load middleware classes
+require_once 'middleware/ValidationMiddleware.php';
+require_once 'middleware/ErrorHandlingMiddleware.php';
+require_once 'middleware/LoggingMiddleware.php';
+
+// Initialize middleware
+$validationMiddleware = new ValidationMiddleware();
+$errorHandlingMiddleware = new ErrorHandlingMiddleware();
+$loggingMiddleware = new LoggingMiddleware();
+
+// Apply global middleware
+$app->before('start', function() use ($app, $loggingMiddleware) {
+    $loggingMiddleware->before([]);
+});
+
+$app->after('start', function() use ($app, $loggingMiddleware, $errorHandlingMiddleware) {
+    $loggingMiddleware->after([]);
+    $errorHandlingMiddleware->after([]);
+});
+
 // Add a route for the base path
 $app->route('/', function() {
     debug_log("Matched base path route");
@@ -624,7 +647,9 @@ $app->route('GET /shirts', function() use ($app) {
             'baseUrl' => BASE_URL
         ]);
     }
-});
+})->addMiddleware(new ValidationMiddleware([
+    'category_id' => 'numeric'
+]));
 
 $app->route('POST /shirts/add-to-cart', function() use ($app) {
     error_log("Debug: Add to cart request received");
@@ -644,7 +669,10 @@ $app->route('POST /shirts/add-to-cart', function() use ($app) {
         'success' => true,
         'message' => 'Product added to cart successfully'
     ]);
-});
+})->addMiddleware(new ValidationMiddleware([
+    'productId' => 'required|numeric',
+    'quantity' => 'required|numeric|min:1'
+]));
 
 // Jackets route
 $app->route('GET /jackets', function() use ($app) {
@@ -859,6 +887,18 @@ $app->route('POST /perfumes/add-to-cart', function() use ($app) {
 });
 
 // Login route that handles both API and form submissions
+$app->route('GET /login', function() use ($app) {
+    if ($app->isLoggedIn()) {
+        $app->redirect('/');
+        return;
+    }
+    $app->render('login', [
+        'baseUrl' => BASE_URL,
+        'error' => '',
+        'email' => ''
+    ]);
+});
+
 $app->route('POST /login', function() use ($app) {
     if ($app->isApiRequest()) {
         // Handle API request
@@ -901,70 +941,157 @@ $app->route('POST /login', function() use ($app) {
             $app->json(['error' => 'An error occurred during login'], 500);
         }
     } else {
-        // Handle HTML request
-        $app->render('login', [
-            'error' => '',
-            'email' => '',
-            'baseUrl' => BASE_URL
-        ]);
+        // Handle form submission
+        $email = $_POST['email'] ?? '';
+        $password = $_POST['password'] ?? '';
+        
+        if (empty($email) || empty($password)) {
+            $app->render('login', [
+                'error' => 'Email and password are required',
+                'email' => $email,
+                'baseUrl' => BASE_URL
+            ]);
+            return;
+        }
+        
+        try {
+            $pdo = $app->db();
+            $stmt = $pdo->prepare("SELECT ID, Name, Email, Password, Role FROM Users WHERE Email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user || !password_verify($password, $user['Password'])) {
+                $app->render('login', [
+                    'error' => 'Invalid email or password',
+                    'email' => $email,
+                    'baseUrl' => BASE_URL
+                ]);
+                return;
+            }
+            
+            // Start session and set user data
+            session_start();
+            $_SESSION['user_id'] = $user['ID'];
+            $_SESSION['user_role'] = $user['Role'];
+            
+            // Redirect to home page
+            $app->redirect('/');
+            
+        } catch (PDOException $e) {
+            error_log("Database error: " . $e->getMessage());
+            $app->render('login', [
+                'error' => 'An error occurred during login',
+                'email' => $email,
+                'baseUrl' => BASE_URL
+            ]);
+        }
     }
-});
+})->addMiddleware(new ValidationMiddleware([
+    'email' => 'required|email',
+    'password' => 'required|min:6'
+]));
 
 // Register route
 $app->route('GET /register', function() use ($app) {
-    error_log("Debug: Register route accessed");
+    if ($app->isLoggedIn()) {
+        $app->redirect('/');
+        return;
+    }
     $app->render('register', [
-        'baseUrl' => BASE_URL
+        'baseUrl' => BASE_URL,
+        'error' => '',
+        'username' => '',
+        'email' => ''
     ]);
 });
 
 $app->route('POST /register', function() use ($app) {
-    error_log("Debug: Register route accessed");
-    
-    // Get JSON input
-    $json = file_get_contents('php://input');
-    $data = json_decode($json, true);
+    if ($app->isApiRequest()) {
+        // Handle API request
+        $data = json_decode(file_get_contents('php://input'), true);
+    } else {
+        // Handle form submission
+        $data = [
+            'name' => $_POST['username'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? '',
+            'confirmPassword' => $_POST['confirmPassword'] ?? ''
+        ];
+    }
     
     if (!$data) {
-        header('Content-Type: application/json');
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid JSON data']);
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Invalid JSON data'], 400);
+        } else {
+            $app->render('register', [
+                'error' => 'Invalid form data',
+                'username' => $data['name'] ?? '',
+                'email' => $data['email'] ?? '',
+                'baseUrl' => BASE_URL
+            ]);
+        }
         return;
     }
     
     // Validate required fields
     if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
-        header('Content-Type: application/json');
-        http_response_code(400);
-        echo json_encode(['error' => 'Name, email and password are required']);
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Name, email and password are required'], 400);
+        } else {
+            $app->render('register', [
+                'error' => 'Name, email and password are required',
+                'username' => $data['name'] ?? '',
+                'email' => $data['email'] ?? '',
+                'baseUrl' => BASE_URL
+            ]);
+        }
+        return;
+    }
+    
+    // Validate password confirmation for form submission
+    if (!$app->isApiRequest() && $data['password'] !== $data['confirmPassword']) {
+        $app->render('register', [
+            'error' => 'Passwords do not match',
+            'username' => $data['name'],
+            'email' => $data['email'],
+            'baseUrl' => BASE_URL
+        ]);
         return;
     }
     
     // Validate role if provided
     $role = $data['role'] ?? 'user';
     if (!in_array($role, ['user', 'admin'])) {
-        header('Content-Type: application/json');
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid role. Must be either "user" or "admin"']);
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Invalid role. Must be either "user" or "admin"'], 400);
+        } else {
+            $app->render('register', [
+                'error' => 'Invalid role selected',
+                'username' => $data['name'],
+                'email' => $data['email'],
+                'baseUrl' => BASE_URL
+            ]);
+        }
         return;
     }
     
     try {
-        // Connect to database
-        $pdo = new PDO(
-            "mysql:host=localhost;dbname=ecommerce",
-            "root",
-            "",
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
+        $db = $app->db();
         
         // Check if email already exists
-        $stmt = $pdo->prepare("SELECT ID FROM Users WHERE Email = ?");
+        $stmt = $db->prepare("SELECT ID FROM Users WHERE Email = ?");
         $stmt->execute([$data['email']]);
         if ($stmt->fetch()) {
-            header('Content-Type: application/json');
-            http_response_code(400);
-            echo json_encode(['error' => 'Email already registered']);
+            if ($app->isApiRequest()) {
+                $app->json(['error' => 'Email already registered'], 400);
+            } else {
+                $app->render('register', [
+                    'error' => 'Email already registered',
+                    'username' => $data['name'],
+                    'email' => $data['email'],
+                    'baseUrl' => BASE_URL
+                ]);
+            }
             return;
         }
         
@@ -972,36 +1099,52 @@ $app->route('POST /register', function() use ($app) {
         $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
         
         // Insert new user with role
-        $stmt = $pdo->prepare("INSERT INTO Users (Name, Email, Password, Role) VALUES (?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO Users (Name, Email, Password, Role) VALUES (?, ?, ?, ?)");
         $stmt->execute([$data['name'], $data['email'], $hashedPassword, $role]);
         
         // Get the new user's ID
-        $userId = $pdo->lastInsertId();
+        $userId = $db->lastInsertId();
         
         // Start session and set user data
         session_start();
         $_SESSION['user_id'] = $userId;
-        $_SESSION['role'] = $role;
+        $_SESSION['user_role'] = $role;
         
-        // Return success response
-        header('Content-Type: application/json');
-        echo json_encode([
-            'message' => 'Registration successful',
-            'user' => [
-                'id' => $userId,
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'role' => $role
-            ]
-        ]);
+        if ($app->isApiRequest()) {
+            // Return success response for API
+            $app->json([
+                'message' => 'Registration successful',
+                'user' => [
+                    'id' => $userId,
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'role' => $role
+                ]
+            ]);
+        } else {
+            // Redirect to home page for form submission
+            $app->redirect('/');
+        }
         
     } catch (PDOException $e) {
         error_log("Database error: " . $e->getMessage());
-        header('Content-Type: application/json');
-        http_response_code(500);
-        echo json_encode(['error' => 'Internal server error']);
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Internal server error'], 500);
+        } else {
+            $app->render('register', [
+                'error' => 'An error occurred during registration',
+                'username' => $data['name'],
+                'email' => $data['email'],
+                'baseUrl' => BASE_URL
+            ]);
+        }
     }
-});
+})->addMiddleware(new ValidationMiddleware([
+    'name' => 'required|min:3|max:50',
+    'email' => 'required|email',
+    'password' => 'required|min:6',
+    'confirmPassword' => 'same:password'
+]));
 
 $app->route('POST /logout', function() use ($app) {
     session_start();
@@ -1036,7 +1179,9 @@ $app->route('GET /user-profile', function() use ($app) {
         'orders' => $orders,
         'baseUrl' => BASE_URL
     ]);
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required'
+]));
 
 $app->route('POST /user-profile', function() use ($app) {
     error_log("Debug: User profile POST request received");
@@ -1083,7 +1228,14 @@ $app->route('POST /user-profile', function() use ($app) {
         ],
         'baseUrl' => BASE_URL
     ]);
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required',
+    'username' => 'required|min:3|max:50',
+    'email' => 'required|email',
+    'currentPassword' => 'required',
+    'newPassword' => 'min:6',
+    'confirmPassword' => 'same:newPassword'
+]));
 
 // Function to ensure cart table exists
 function ensureCartTable() {
@@ -1181,7 +1333,9 @@ $app->route('GET /cart', function() use ($app) {
             'baseUrl' => BASE_URL
         ]);
     }
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required'
+]));
 
 $app->route('POST /cart', function() use ($app) {
     try {
@@ -1273,7 +1427,11 @@ $app->route('POST /cart', function() use ($app) {
         error_log("Database error: " . $e->getMessage());
         $app->json(['error' => 'Failed to add item to cart: ' . $e->getMessage()], 500);
     }
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required',
+    'product_id' => 'required|numeric',
+    'quantity' => 'required|numeric|min:1'
+]));
 
 $app->route('POST /cart/update', function() use ($app) {
     try {
@@ -1458,7 +1616,9 @@ $app->route('GET /checkout', function() use ($app) {
         'shipping' => $shipping,
         'baseUrl' => BASE_URL
     ]);
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required'
+]));
 
 $app->route('POST /checkout', function() use ($app) {
     $token = $app->getBearerToken();
@@ -1499,7 +1659,11 @@ $app->route('POST /checkout', function() use ($app) {
     $stmt = $db->prepare('DELETE FROM cart WHERE user_id = ?');
     $stmt->execute([$userId]);
     $app->json(['message' => 'Order placed successfully', 'order_id' => $orderId]);
-});
+})->addMiddleware(new ValidationMiddleware([
+    'token' => 'required',
+    'shipping_address' => 'required|min:10',
+    'payment_method' => 'required'
+]));
 
 // Admin routes
 $app->route('GET /admin', function() use ($app) {
@@ -2256,6 +2420,63 @@ $app->route('GET /login', function() use ($app) {
         'email' => ''
     ]);
 });
+
+// Middleware test page route
+$app->route('GET /middleware-test', function() use ($app) {
+    $app->render('middleware-test', [
+        'baseUrl' => BASE_URL
+    ]);
+});
+
+// Test route for middleware
+$app->route('POST /test-middleware', function() use ($app) {
+    $data = $app->request()->data;
+    
+    // Test validation
+    if (isset($data['test_validation'])) {
+        if (!isset($data['required_field'])) {
+            $app->json(['error' => 'Required field is missing'], 400);
+            return;
+        }
+        
+        if (isset($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $app->json(['error' => 'Invalid email format'], 400);
+            return;
+        }
+        
+        if (isset($data['min_length']) && strlen($data['min_length']) < 3) {
+            $app->json(['error' => 'Field must be at least 3 characters'], 400);
+            return;
+        }
+        
+        if (isset($data['max_length']) && strlen($data['max_length']) > 10) {
+            $app->json(['error' => 'Field must not exceed 10 characters'], 400);
+            return;
+        }
+        
+        if (isset($data['numeric']) && !is_numeric($data['numeric'])) {
+            $app->json(['error' => 'Field must be numeric'], 400);
+            return;
+        }
+    }
+    
+    // Test error handling
+    if (isset($data['test_error'])) {
+        throw new Exception('Test error message');
+    }
+    
+    // Test success response
+    $app->json([
+        'message' => 'Middleware test successful',
+        'data' => $data
+    ]);
+})->addMiddleware(new ValidationMiddleware([
+    'required_field' => 'required',
+    'email' => 'email',
+    'min_length' => 'min:3',
+    'max_length' => 'max:10',
+    'numeric' => 'numeric'
+]));
 
 // Catch-all route (should be last)
 $app->route('*', function() {
