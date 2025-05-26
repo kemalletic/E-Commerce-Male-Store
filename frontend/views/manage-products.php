@@ -1,23 +1,16 @@
 <?php
-// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
-// Debug output
-echo "<!-- This is the dynamic PHP version -->\n";
-echo "<!-- Debug: Template started -->\n";
-echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->\n";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jackets Collection</title>
+  <title>Manage Products</title>
   <link rel="stylesheet" href="<?php echo $baseUrl; ?>/frontend/assets/css/style.css">
 </head>
 <body>
-  <!-- Navigation -->
   <header id="navbar">
     <nav>
       <button id="menu-toggle" class="hamburger">&#9776;</button>
@@ -35,7 +28,6 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       <a href="<?php echo $baseUrl; ?>/cart">Cart</a>
       <a href="<?php echo $baseUrl; ?>/user-profile">Profile</a>
       <a href="<?php echo $baseUrl; ?>/admin/dashboard" id="admin-dashboard-btn" style="display: none;">Admin Dashboard</a>
-
       <div class="auth-links">
         <a href="<?php echo $baseUrl; ?>/login" id="login-btn">Login</a>
         <a href="<?php echo $baseUrl; ?>/register" id="register-btn">Register</a>
@@ -43,35 +35,44 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       </div>
     </nav>
   </header>
-
-  <!-- Jackets Section -->
-  <main class="product-container">
-    <h2>Jackets Collection</h2>
-    <section id="jackets-list">
-      <?php if(isset($products) && !empty($products)): ?>
-        <?php foreach($products as $product): ?>
-          <div class="product-card">
-            <img src="<?php echo $baseUrl; ?>/frontend/assets/images/<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
-            <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-            <p class="price">$<?php echo htmlspecialchars($product['price']); ?></p>
-            <p class="description"><?php echo htmlspecialchars($product['description']); ?></p>
-            <button class="btn-add-to-cart" onclick="addToCart(<?php echo $product['id']; ?>)">Add to Cart</button>
-          </div>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <p>No products found.</p>
-      <?php endif; ?>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = localStorage.getItem('user');
+      if (!user || JSON.parse(user).role !== 'admin') {
+        window.location.href = '/';
+      }
+    });
+  </script>
+  <main class="admin-container">
+    <h2>Manage Products</h2>
+    <button id="add-product-btn" class="btn">Add New Product</button>
+    <section id="products-list">
+      <!-- Existing products will be displayed here -->
     </section>
   </main>
-
+  <div id="product-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-title">Add New Product</h3>
+      <form id="product-form">
+        <input type="text" id="product-name" placeholder="Product Name" required>
+        <input type="number" id="product-price" placeholder="Price" required>
+        <input type="file" id="product-image" required>
+        <select id="product-category" required>
+          <option value="shirts">Shirts</option>
+          <option value="jackets">Jackets</option>
+          <option value="perfumes">Perfumes</option>
+          <option value="sneakers">Sneakers</option>
+          <option value="tracksuits">Tracksuits</option>
+        </select>
+        <button type="submit" class="btn">Save Product</button>
+        <button type="button" class="btn cancel" id="cancel-btn">Cancel</button>
+      </form>
+    </div>
+  </div>
   <footer>
     <p>&copy; 2025 E-Commerce Website. All rights reserved.</p>
   </footer>
-
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/auth.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/products.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/jackets.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/cart.js"></script>
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/manage-products.js"></script>
 </body>
 </html> 

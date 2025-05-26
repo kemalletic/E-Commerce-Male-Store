@@ -44,24 +44,10 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
     </nav>
   </header>
 
-  <main class="products-container">
+  <!-- Shirts Section -->
+  <main class="product-container">
     <h2>Shirts Collection</h2>
-    
-    <?php if(isset($error)): ?>
-      <div class="error-message"><?php echo $error; ?></div>
-    <?php endif; ?>
-
-    <div class="filters">
-      <select id="sort-by" onchange="sortProducts(this.value)">
-        <option value="default">Sort By</option>
-        <option value="price-low">Price: Low to High</option>
-        <option value="price-high">Price: High to Low</option>
-        <option value="name-asc">Name: A to Z</option>
-        <option value="name-desc">Name: Z to A</option>
-      </select>
-    </div>
-
-    <div class="products-grid">
+    <section id="shirts-list">
       <?php if(isset($products) && !empty($products)): ?>
         <?php foreach($products as $product): ?>
           <div class="product-card">
@@ -75,7 +61,7 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       <?php else: ?>
         <p>No products found.</p>
       <?php endif; ?>
-    </div>
+    </section>
   </main>
 
   <footer>
@@ -85,5 +71,7 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/auth.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/products.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/shirts.js"></script>
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/cart.js"></script>
 </body>
 </html> 

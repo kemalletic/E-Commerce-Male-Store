@@ -1,6 +1,31 @@
 document.addEventListener("DOMContentLoaded", function () {
-    checkLoginStatus();
-    document.getElementById("logout-btn").addEventListener("click", logout);
+    // Check login status
+    const userStr = localStorage.getItem("user");
+    if (!userStr) {
+        window.location.href = "/login";
+        return;
+    }
+    const user = JSON.parse(userStr);
+
+    // Fill in the profile form fields
+    if (user.name || user.username) {
+        document.getElementById("username").value = user.name || user.username;
+    }
+    if (user.email) {
+        document.getElementById("email").value = user.email;
+    }
+
+    // Optionally, fetch order history from backend using JWT
+    // const token = localStorage.getItem("token");
+    // if (token) {
+    //     fetch("/orders", {
+    //         headers: { "Authorization": "Bearer " + token }
+    //     })
+    //     .then(res => res.json())
+    //     .then(data => {
+    //         // Render orders in the order history section
+    //     });
+    // }
 });
 
 // Function to check if the user is logged in

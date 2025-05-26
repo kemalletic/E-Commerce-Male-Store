@@ -47,25 +47,20 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
   <main class="login-container">
     <div class="login-box">
       <h2>Login</h2>
-      
       <?php if(isset($error)): ?>
         <div class="error-message"><?php echo $error; ?></div>
       <?php endif; ?>
-
-      <form id="login-form" method="POST" action="<?php echo $baseUrl; ?>/login">
+      <form id="login-form">
         <div class="input-group">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>" required>
         </div>
-
         <div class="input-group">
           <label for="password">Password</label>
           <input type="password" id="password" name="password" required>
         </div>
-
         <button type="submit" class="btn-login">Login</button>
       </form>
-
       <p class="register-link">Don't have an account? <a href="<?php echo $baseUrl; ?>/register">Register here</a></p>
     </div>
   </main>
@@ -74,6 +69,7 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
     <p>&copy; 2025 E-Commerce Website. All rights reserved.</p>
   </footer>
 
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/auth.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/login.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
 </body>

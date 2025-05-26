@@ -16,16 +16,50 @@ document.addEventListener("DOMContentLoaded", function () {
     const logoutBtn = document.getElementById("logout-btn");
     const adminDashboardBtn = document.getElementById("admin-dashboard-btn");
 
-    // Get logged-in user info
-    const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
+    // Try both user and loggedInUser keys for compatibility
+    const userStr = localStorage.getItem("user") || localStorage.getItem("loggedInUser");
+    let user = null;
+    if (userStr) {
+        user = JSON.parse(userStr);
+        console.log("Current user:", user); // Debug log
+    }
 
-    // Call the function to manage button visibility
-    updateNavBar(loggedInUser);
+    if (user) {
+        // User is logged in
+        if (loginBtn) loginBtn.style.display = "none";
+        if (registerBtn) registerBtn.style.display = "none";
+        if (logoutBtn) {
+            logoutBtn.classList.remove("hidden");
+            logoutBtn.style.display = "inline";
+        }
+        // Show admin dashboard button for admins
+        if (user.role === "admin" && adminDashboardBtn) {
+            console.log("Showing admin dashboard button"); // Debug log
+            adminDashboardBtn.style.display = "inline";
+        } else if (adminDashboardBtn) {
+            adminDashboardBtn.style.display = "none";
+        }
+    } else {
+        // User is not logged in
+        if (loginBtn) loginBtn.style.display = "inline";
+        if (registerBtn) registerBtn.style.display = "inline";
+        if (logoutBtn) {
+            logoutBtn.classList.add("hidden");
+            logoutBtn.style.display = "none";
+        }
+        if (adminDashboardBtn) {
+            adminDashboardBtn.style.display = "none";
+        }
+    }
 
+    // Logout functionality
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", function () {
-            localStorage.removeItem("loggedInUser");
-            window.location.href = "/frontend/pages/login.html"; 
+        logoutBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            localStorage.removeItem("loggedInUser"); // Add this line for consistency
+            window.location.href = "/";
         });
     }
 });

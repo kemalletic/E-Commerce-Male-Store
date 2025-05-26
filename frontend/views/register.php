@@ -47,36 +47,29 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
   <main class="register-container">
     <div class="register-box">
       <h2>Create an Account</h2>
-      
       <?php if(isset($error)): ?>
         <div class="error-message"><?php echo $error; ?></div>
       <?php endif; ?>
-
       <form id="registerForm" method="POST" action="<?php echo $baseUrl; ?>/register">
         <div class="input-group">
           <label for="username">Username</label>
           <input type="text" id="username" name="username" value="<?php echo isset($username) ? htmlspecialchars($username) : ''; ?>" required>
         </div>
-
         <div class="input-group">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>" required>
         </div>
-
         <div class="input-group">
           <label for="password">Password</label>
           <input type="password" id="password" name="password" required>
         </div>
-
         <div class="input-group">
           <label for="confirmPassword">Confirm Password</label>
           <input type="password" id="confirmPassword" name="confirmPassword" required>
           <p id="passwordError" class="error-message"></p>
         </div>
-
         <button type="submit" class="btn-register">Register</button>
       </form>
-
       <p class="login-link">Already have an account? <a href="<?php echo $baseUrl; ?>/login">Login here</a></p>
     </div>
   </main>

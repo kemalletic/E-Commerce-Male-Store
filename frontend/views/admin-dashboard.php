@@ -2,18 +2,13 @@
 // Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
-// Debug output
-echo "<!-- This is the dynamic PHP version -->\n";
-echo "<!-- Debug: Template started -->\n";
-echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->\n";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jackets Collection</title>
+  <title>Admin Dashboard</title>
   <link rel="stylesheet" href="<?php echo $baseUrl; ?>/frontend/assets/css/style.css">
 </head>
 <body>
@@ -35,7 +30,6 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       <a href="<?php echo $baseUrl; ?>/cart">Cart</a>
       <a href="<?php echo $baseUrl; ?>/user-profile">Profile</a>
       <a href="<?php echo $baseUrl; ?>/admin/dashboard" id="admin-dashboard-btn" style="display: none;">Admin Dashboard</a>
-
       <div class="auth-links">
         <a href="<?php echo $baseUrl; ?>/login" id="login-btn">Login</a>
         <a href="<?php echo $baseUrl; ?>/register" id="register-btn">Register</a>
@@ -43,35 +37,39 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       </div>
     </nav>
   </header>
-
-  <!-- Jackets Section -->
-  <main class="product-container">
-    <h2>Jackets Collection</h2>
-    <section id="jackets-list">
-      <?php if(isset($products) && !empty($products)): ?>
-        <?php foreach($products as $product): ?>
-          <div class="product-card">
-            <img src="<?php echo $baseUrl; ?>/frontend/assets/images/<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
-            <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-            <p class="price">$<?php echo htmlspecialchars($product['price']); ?></p>
-            <p class="description"><?php echo htmlspecialchars($product['description']); ?></p>
-            <button class="btn-add-to-cart" onclick="addToCart(<?php echo $product['id']; ?>)">Add to Cart</button>
-          </div>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <p>No products found.</p>
-      <?php endif; ?>
+  <script>
+    // Only allow admin users
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = localStorage.getItem('user');
+      if (!user || JSON.parse(user).role !== 'admin') {
+        window.location.href = '/';
+      }
+    });
+  </script>
+  <main class="dashboard-container">
+    <h2>Admin Dashboard</h2>
+    <section id="admin-panel">
+      <div class="admin-card" id="manage-products">
+        <h3>Manage Products</h3>
+        <p>Add, edit, or remove products.</p>
+        <a href="<?php echo $baseUrl; ?>/admin/manage-products" class="btn">Go to Manage Products</a>
+      </div>
+      <div class="admin-card" id="manage-users">
+        <h3>Manage Users</h3>
+        <p>View and control user accounts.</p>
+        <a href="<?php echo $baseUrl; ?>/admin/manage-users" class="btn">Go to Manage Users</a>
+      </div>
+      <div class="admin-card" id="manage-orders">
+        <h3>Manage Orders</h3>
+        <p>Track and update order statuses.</p>
+        <a href="<?php echo $baseUrl; ?>/admin/manage-orders" class="btn">Go to Manage Orders</a>
+      </div>
     </section>
   </main>
-
   <footer>
     <p>&copy; 2025 E-Commerce Website. All rights reserved.</p>
   </footer>
-
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/auth.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/products.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/jackets.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/cart.js"></script>
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/admin-dashboard.js"></script>
 </body>
 </html> 

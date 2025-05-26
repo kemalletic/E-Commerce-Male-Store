@@ -46,15 +46,12 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
 
   <main class="checkout-container">
     <h2>Checkout</h2>
-    
     <?php if(isset($error)): ?>
       <div class="error-message"><?php echo $error; ?></div>
     <?php endif; ?>
-
     <?php if(isset($success)): ?>
       <div class="success-message"><?php echo $success; ?></div>
     <?php endif; ?>
-
     <div class="checkout-content">
       <div class="checkout-form">
         <form id="checkoutForm" method="POST" action="<?php echo $baseUrl; ?>/checkout">
@@ -63,47 +60,38 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
             <label for="fullName">Full Name</label>
             <input type="text" id="fullName" name="fullName" value="<?php echo isset($shipping['fullName']) ? htmlspecialchars($shipping['fullName']) : ''; ?>" required>
           </div>
-
           <div class="input-group">
             <label for="address">Address</label>
             <input type="text" id="address" name="address" value="<?php echo isset($shipping['address']) ? htmlspecialchars($shipping['address']) : ''; ?>" required>
           </div>
-
           <div class="input-group">
             <label for="city">City</label>
             <input type="text" id="city" name="city" value="<?php echo isset($shipping['city']) ? htmlspecialchars($shipping['city']) : ''; ?>" required>
           </div>
-
           <div class="input-group">
             <label for="state">State</label>
             <input type="text" id="state" name="state" value="<?php echo isset($shipping['state']) ? htmlspecialchars($shipping['state']) : ''; ?>" required>
           </div>
-
           <div class="input-group">
             <label for="zipCode">ZIP Code</label>
             <input type="text" id="zipCode" name="zipCode" value="<?php echo isset($shipping['zipCode']) ? htmlspecialchars($shipping['zipCode']) : ''; ?>" required>
           </div>
-
           <h3>Payment Information</h3>
           <div class="input-group">
             <label for="cardNumber">Card Number</label>
             <input type="text" id="cardNumber" name="cardNumber" required>
           </div>
-
           <div class="input-group">
             <label for="expiryDate">Expiry Date</label>
             <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" required>
           </div>
-
           <div class="input-group">
             <label for="cvv">CVV</label>
             <input type="text" id="cvv" name="cvv" required>
           </div>
-
           <button type="submit" class="btn-place-order">Place Order</button>
         </form>
       </div>
-
       <div class="order-summary">
         <h3>Order Summary</h3>
         <?php if(isset($cart) && !empty($cart['items'])): ?>
@@ -116,7 +104,6 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
               </div>
             <?php endforeach; ?>
           </div>
-
           <div class="summary-totals">
             <div class="summary-row">
               <span>Subtotal:</span>

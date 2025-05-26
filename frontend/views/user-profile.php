@@ -127,6 +127,7 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       }
     });
   </script>
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/user-profile.js"></script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
 </body>
 </html> 

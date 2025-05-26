@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Redirect non-admin users to the home page
     if (!loggedInUser || loggedInUser.role !== "admin") {
         alert("Access Denied! Admins Only.");
-        window.location.href = "../index.html";
+        window.location.href = "/";
         return;
     }
 

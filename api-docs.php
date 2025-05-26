@@ -12,7 +12,7 @@ header('Content-Type: text/html; charset=utf-8');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Commerce Male Store API Documentation</title>
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
     <style>
         body {
             margin: 0;
@@ -31,7 +31,7 @@ header('Content-Type: text/html; charset=utf-8');
     <script>
         window.onload = function() {
             const ui = SwaggerUIBundle({
-                url: "<?php echo htmlspecialchars($_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/openapi.yaml'); ?>",
+                url: "openapi.yaml",
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
