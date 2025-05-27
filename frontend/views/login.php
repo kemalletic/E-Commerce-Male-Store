@@ -50,7 +50,7 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
       <?php if(isset($error)): ?>
         <div class="error-message"><?php echo $error; ?></div>
       <?php endif; ?>
-      <form id="login-form">
+      <form id="login-form" method="POST" action="<?php echo $baseUrl; ?>/login">
         <div class="input-group">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>" required>

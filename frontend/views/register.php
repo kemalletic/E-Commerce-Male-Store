@@ -44,8 +44,8 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
     </nav>
   </header>
 
-  <main class="register-container">
-    <div class="register-box">
+  <main class="login-container">
+    <div class="login-box">
       <h2>Create an Account</h2>
       <?php if(isset($error)): ?>
         <div class="error-message"><?php echo $error; ?></div>
@@ -68,9 +68,9 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
           <input type="password" id="confirmPassword" name="confirmPassword" required>
           <p id="passwordError" class="error-message"></p>
         </div>
-        <button type="submit" class="btn-register">Register</button>
+        <button type="submit" class="btn-login">Register</button>
       </form>
-      <p class="login-link">Already have an account? <a href="<?php echo $baseUrl; ?>/login">Login here</a></p>
+      <p class="register-link">Already have an account? <a href="<?php echo $baseUrl; ?>/login">Login here</a></p>
     </div>
   </main>
 

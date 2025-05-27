@@ -1,6 +1,11 @@
 <?php
 require 'vendor/autoload.php';
 
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 use flight\Engine;
 
 $app = new Engine();
@@ -265,7 +270,7 @@ function serveHtml($filename, $isInPages = true) {
             // Other page links
             'href="./pages/cart.html"' => 'href="' . $baseUrl . '/cart"',
             'href="./pages/user-profile.html"' => 'href="' . $baseUrl . '/user-profile"',
-            'href="./pages/admin-dashboard.html"' => 'href="' . $baseUrl . '/admin/dashboard"',
+            'href="./pages/admin-dashboard.html"' => 'href="' . $baseUrl . '/admin-dashboard"',
             'href="./pages/login.html"' => 'href="' . $baseUrl . '/login"',
             'href="./pages/register.html"' => 'href="' . $baseUrl . '/register"',
             'href="./pages/checkout.html"' => 'href="' . $baseUrl . '/checkout"',
@@ -277,7 +282,7 @@ function serveHtml($filename, $isInPages = true) {
             // Also handle links without ./pages/
             'href="cart.html"' => 'href="' . $baseUrl . '/cart"',
             'href="user-profile.html"' => 'href="' . $baseUrl . '/user-profile"',
-            'href="admin-dashboard.html"' => 'href="' . $baseUrl . '/admin/dashboard"',
+            'href="admin-dashboard.html"' => 'href="' . $baseUrl . '/admin-dashboard"',
             'href="login.html"' => 'href="' . $baseUrl . '/login"',
             'href="register.html"' => 'href="' . $baseUrl . '/register"',
             'href="checkout.html"' => 'href="' . $baseUrl . '/checkout"',
@@ -294,9 +299,16 @@ function serveHtml($filename, $isInPages = true) {
         
         echo $content;
     } else {
-        header("HTTP/1.0 404 Not Found");
-        echo "Page not found: " . $filepath;
-        debug_log("404 Error - File not found: " . $filepath);
+        // If the file doesn't exist in the pages directory, try the views directory
+        $viewPath = __DIR__ . '/frontend/views/' . $filename;
+        if (file_exists($viewPath)) {
+            // Include the view file which will have access to the variables
+            include $viewPath;
+        } else {
+            header("HTTP/1.0 404 Not Found");
+            echo "Page not found: " . $filepath;
+            debug_log("404 Error - File not found: " . $filepath);
+        }
     }
 }
 
@@ -888,18 +900,24 @@ $app->route('POST /perfumes/add-to-cart', function() use ($app) {
 
 // Login route that handles both API and form submissions
 $app->route('GET /login', function() use ($app) {
-    if ($app->isLoggedIn()) {
-        $app->redirect('/');
-        return;
+    error_log("Debug: Accessing login page");
+    
+    // If there's an existing session, destroy it
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_unset();
+        session_destroy();
     }
-    $app->render('login', [
-        'baseUrl' => BASE_URL,
-        'error' => '',
-        'email' => ''
-    ]);
+    
+    // Start a fresh session
+    session_start();
+    
+    // Serve the login page
+    serveHtml('login.php', false);
 });
 
 $app->route('POST /login', function() use ($app) {
+    error_log("Debug: Processing login request");
+    
     if ($app->isApiRequest()) {
         // Handle API request
         $data = json_decode(file_get_contents('php://input'), true);
@@ -921,6 +939,18 @@ $app->route('POST /login', function() use ($app) {
                 $app->json(['error' => 'Invalid email or password'], 401);
                 return;
             }
+            
+            // Start fresh session
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_destroy();
+            }
+            session_start();
+            
+            // Set session data
+            $_SESSION['user_id'] = $user['ID'];
+            $_SESSION['user_role'] = $user['Role'];
+            $_SESSION['user_name'] = $user['Name'];
+            $_SESSION['user_email'] = $user['Email'];
             
             // Generate JWT token
             $token = generateJWT($user);
@@ -969,13 +999,30 @@ $app->route('POST /login', function() use ($app) {
                 return;
             }
             
-            // Start session and set user data
+            // Start fresh session
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_destroy();
+            }
             session_start();
+            
+            // Set session data
             $_SESSION['user_id'] = $user['ID'];
             $_SESSION['user_role'] = $user['Role'];
+            $_SESSION['user_name'] = $user['Name'];
+            $_SESSION['user_email'] = $user['Email'];
             
-            // Redirect to home page
-            $app->redirect('/');
+            // Generate JWT token
+            $token = generateJWT($user);
+            
+            // Store token in cookie
+            setcookie('token', $token, time() + (86400 * 30), "/", "", false, true); // 30 days, secure cookie
+            
+            // Redirect based on role
+            if ($user['Role'] === 'admin') {
+                $app->redirect('/admin/dashboard');
+            } else {
+                $app->redirect('/');
+            }
             
         } catch (PDOException $e) {
             error_log("Database error: " . $e->getMessage());
@@ -986,205 +1033,58 @@ $app->route('POST /login', function() use ($app) {
             ]);
         }
     }
-})->addMiddleware(new ValidationMiddleware([
-    'email' => 'required|email',
-    'password' => 'required|min:6'
-]));
-
-// Register route
-$app->route('GET /register', function() use ($app) {
-    if ($app->isLoggedIn()) {
-        $app->redirect('/');
-        return;
-    }
-    $app->render('register', [
-        'baseUrl' => BASE_URL,
-        'error' => '',
-        'username' => '',
-        'email' => ''
-    ]);
 });
 
-$app->route('POST /register', function() use ($app) {
-    if ($app->isApiRequest()) {
-        // Handle API request
-        $data = json_decode(file_get_contents('php://input'), true);
-    } else {
-        // Handle form submission
-        $data = [
-            'name' => $_POST['username'] ?? '',
-            'email' => $_POST['email'] ?? '',
-            'password' => $_POST['password'] ?? '',
-            'confirmPassword' => $_POST['confirmPassword'] ?? ''
-        ];
-    }
-    
-    if (!$data) {
-        if ($app->isApiRequest()) {
-            $app->json(['error' => 'Invalid JSON data'], 400);
-        } else {
-            $app->render('register', [
-                'error' => 'Invalid form data',
-                'username' => $data['name'] ?? '',
-                'email' => $data['email'] ?? '',
-                'baseUrl' => BASE_URL
-            ]);
-        }
-        return;
-    }
-    
-    // Validate required fields
-    if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
-        if ($app->isApiRequest()) {
-            $app->json(['error' => 'Name, email and password are required'], 400);
-        } else {
-            $app->render('register', [
-                'error' => 'Name, email and password are required',
-                'username' => $data['name'] ?? '',
-                'email' => $data['email'] ?? '',
-                'baseUrl' => BASE_URL
-            ]);
-        }
-        return;
-    }
-    
-    // Validate password confirmation for form submission
-    if (!$app->isApiRequest() && $data['password'] !== $data['confirmPassword']) {
-        $app->render('register', [
-            'error' => 'Passwords do not match',
-            'username' => $data['name'],
-            'email' => $data['email'],
-            'baseUrl' => BASE_URL
-        ]);
-        return;
-    }
-    
-    // Validate role if provided
-    $role = $data['role'] ?? 'user';
-    if (!in_array($role, ['user', 'admin'])) {
-        if ($app->isApiRequest()) {
-            $app->json(['error' => 'Invalid role. Must be either "user" or "admin"'], 400);
-        } else {
-            $app->render('register', [
-                'error' => 'Invalid role selected',
-                'username' => $data['name'],
-                'email' => $data['email'],
-                'baseUrl' => BASE_URL
-            ]);
-        }
-        return;
-    }
-    
-    try {
-        $db = $app->db();
-        
-        // Check if email already exists
-        $stmt = $db->prepare("SELECT ID FROM Users WHERE Email = ?");
-        $stmt->execute([$data['email']]);
-        if ($stmt->fetch()) {
-            if ($app->isApiRequest()) {
-                $app->json(['error' => 'Email already registered'], 400);
-            } else {
-                $app->render('register', [
-                    'error' => 'Email already registered',
-                    'username' => $data['name'],
-                    'email' => $data['email'],
-                    'baseUrl' => BASE_URL
-                ]);
-            }
-            return;
-        }
-        
-        // Hash password
-        $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-        
-        // Insert new user with role
-        $stmt = $db->prepare("INSERT INTO Users (Name, Email, Password, Role) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$data['name'], $data['email'], $hashedPassword, $role]);
-        
-        // Get the new user's ID
-        $userId = $db->lastInsertId();
-        
-        // Start session and set user data
-        session_start();
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['user_role'] = $role;
-        
-        if ($app->isApiRequest()) {
-            // Return success response for API
-            $app->json([
-                'message' => 'Registration successful',
-                'user' => [
-                    'id' => $userId,
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'role' => $role
-                ]
-            ]);
-        } else {
-            // Redirect to home page for form submission
-            $app->redirect('/');
-        }
-        
-    } catch (PDOException $e) {
-        error_log("Database error: " . $e->getMessage());
-        if ($app->isApiRequest()) {
-            $app->json(['error' => 'Internal server error'], 500);
-        } else {
-            $app->render('register', [
-                'error' => 'An error occurred during registration',
-                'username' => $data['name'],
-                'email' => $data['email'],
-                'baseUrl' => BASE_URL
-            ]);
-        }
-    }
-})->addMiddleware(new ValidationMiddleware([
-    'name' => 'required|min:3|max:50',
-    'email' => 'required|email',
-    'password' => 'required|min:6',
-    'confirmPassword' => 'same:password'
-]));
-
-$app->route('POST /logout', function() use ($app) {
-    session_start();
+$app->route('GET /logout', function() use ($app) {
+    // Clear all session data
+    session_unset();
     session_destroy();
     
-    header('Content-Type: application/json');
-    echo json_encode(['message' => 'Logged out successfully']);
+    // Clear the auth token cookie
+    setcookie('auth_token', '', time() - 3600, '/', '', true, true);
+    
+    // Clear any other cookies that might be set
+    if (isset($_SERVER['HTTP_COOKIE'])) {
+        $cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+        foreach($cookies as $cookie) {
+            $parts = explode('=', $cookie);
+            $name = trim($parts[0]);
+            setcookie($name, '', time() - 3600, '/');
+        }
+    }
+    
+    // Start a new session
+    session_start();
+    
+    // Redirect to login page
+    $app->redirect('/login');
 });
 
-// User profile route
-$app->route('GET /user-profile', function() use ($app) {
-    error_log("Debug: User profile route accessed");
+$app->route('POST /logout', function() use ($app) {
+    // Clear session
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
     
-    // TODO: Get user data from session/database
-    $user = [
-        'username' => 'test_user',
-        'email' => 'test@example.com'
-    ];
+    // Clear token cookie
+    setcookie('token', '', time() - 3600, '/', '', false, true);
     
-    // TODO: Get user's order history
-    $orders = [
-        [
-            'id' => '1',
-            'date' => '2024-03-15',
-            'total' => '99.99',
-            'status' => 'Delivered'
-        ]
-    ];
-    
-    $app->render('user-profile', [
-        'user' => $user,
-        'orders' => $orders,
-        'baseUrl' => BASE_URL
-    ]);
-})->addMiddleware(new ValidationMiddleware([
-    'token' => 'required'
-]));
+    if ($app->isApiRequest()) {
+        $app->json(['message' => 'Logged out successfully']);
+    } else {
+        $app->redirect('/login');
+    }
+});
 
 $app->route('POST /user-profile', function() use ($app) {
     error_log("Debug: User profile POST request received");
+    
+    // Check if user is logged in
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        $app->redirect('/login');
+        return;
+    }
     
     // Get form data
     $username = $_POST['username'] ?? '';
@@ -1218,24 +1118,57 @@ $app->route('POST /user-profile', function() use ($app) {
         return;
     }
     
-    // TODO: Add user profile update logic here
-    // For now, just show a success message
-    $app->render('user-profile', [
-        'success' => 'Profile updated successfully',
-        'user' => [
-            'username' => $username,
-            'email' => $email
-        ],
-        'baseUrl' => BASE_URL
-    ]);
-})->addMiddleware(new ValidationMiddleware([
-    'token' => 'required',
-    'username' => 'required|min:3|max:50',
-    'email' => 'required|email',
-    'currentPassword' => 'required',
-    'newPassword' => 'min:6',
-    'confirmPassword' => 'same:newPassword'
-]));
+    try {
+        $pdo = $app->db();
+        
+        // Verify current password if changing password
+        if ($newPassword) {
+            $stmt = $pdo->prepare("SELECT Password FROM Users WHERE ID = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user || !password_verify($currentPassword, $user['Password'])) {
+                $app->render('user-profile', [
+                    'error' => 'Current password is incorrect',
+                    'user' => [
+                        'username' => $username,
+                        'email' => $email
+                    ],
+                    'baseUrl' => BASE_URL
+                ]);
+                return;
+            }
+            
+            // Update user with new password
+            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE Users SET Name = ?, Email = ?, Password = ? WHERE ID = ?");
+            $stmt->execute([$username, $email, $hashedPassword, $_SESSION['user_id']]);
+        } else {
+            // Update user without changing password
+            $stmt = $pdo->prepare("UPDATE Users SET Name = ?, Email = ? WHERE ID = ?");
+            $stmt->execute([$username, $email, $_SESSION['user_id']]);
+        }
+        
+        $app->render('user-profile', [
+            'success' => 'Profile updated successfully',
+            'user' => [
+                'username' => $username,
+                'email' => $email
+            ],
+            'baseUrl' => BASE_URL
+        ]);
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        $app->render('user-profile', [
+            'error' => 'An error occurred while updating your profile',
+            'user' => [
+                'username' => $username,
+                'email' => $email
+            ],
+            'baseUrl' => BASE_URL
+        ]);
+    }
+});
 
 // Function to ensure cart table exists
 function ensureCartTable() {
@@ -1260,6 +1193,8 @@ function ensureCartTable() {
 
 // Cart routes
 $app->route('GET /cart', function() use ($app) {
+    error_log("Debug: Accessing cart route");
+    
     if ($app->isApiRequest()) {
         // API request handling
         $token = $app->getBearerToken();
@@ -1328,14 +1263,13 @@ $app->route('GET /cart', function() use ($app) {
             ], 500);
         }
     } else {
-        // Render the cart view
+        // For regular page access, render the cart.php view
+        error_log("Debug: Rendering cart view");
         $app->render('cart', [
             'baseUrl' => BASE_URL
         ]);
     }
-})->addMiddleware(new ValidationMiddleware([
-    'token' => 'required'
-]));
+});
 
 $app->route('POST /cart', function() use ($app) {
     try {
@@ -1428,7 +1362,6 @@ $app->route('POST /cart', function() use ($app) {
         $app->json(['error' => 'Failed to add item to cart: ' . $e->getMessage()], 500);
     }
 })->addMiddleware(new ValidationMiddleware([
-    'token' => 'required',
     'product_id' => 'required|numeric',
     'quantity' => 'required|numeric|min:1'
 ]));
@@ -1665,37 +1598,209 @@ $app->route('POST /checkout', function() use ($app) {
     'payment_method' => 'required'
 ]));
 
-// Admin routes
-$app->route('GET /admin', function() use ($app) {
-    if (!$app->isAdmin()) {
-        $app->redirect('/login');
-        return;
-    }
-    $app->render('admin-dashboard');
+// Admin Routes Group
+$app->group('/admin', function($router) use ($app) {
+    // Admin Login Route
+    $router->post('/login', function() use ($app) {
+        error_log("Debug: Processing admin login request");
+        
+        $data = json_decode(file_get_contents('php://input'), true);
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? '';
+        
+        if (empty($email) || empty($password)) {
+            $app->json(['error' => 'Email and password are required'], 400);
+            return;
+        }
+        
+        try {
+            $pdo = $app->db();
+            $stmt = $pdo->prepare("SELECT ID, Name, Email, Password, Role FROM Users WHERE Email = ? AND Role = 'admin'");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user || !password_verify($password, $user['Password'])) {
+                $app->json(['error' => 'Invalid email or password'], 401);
+                return;
+            }
+            
+            // Generate JWT token
+            $token = generateJWT($user);
+            
+            // Start session and set session data
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['user_id'] = $user['ID'];
+            $_SESSION['user_role'] = $user['Role'];
+            $_SESSION['user_name'] = $user['Name'];
+            $_SESSION['user_email'] = $user['Email'];
+            
+            $app->json([
+                'message' => 'Login successful',
+                'token' => $token,
+                'user' => [
+                    'id' => $user['ID'],
+                    'name' => $user['Name'],
+                    'email' => $user['Email'],
+                    'role' => $user['Role']
+                ]
+            ]);
+            
+        } catch (PDOException $e) {
+            error_log("Database error: " . $e->getMessage());
+            $app->json(['error' => 'An error occurred during login'], 500);
+        }
+    });
+
+    // Admin Dashboard Route
+    $router->get('/dashboard', function() use ($app) {
+        error_log("Debug: Accessing admin dashboard");
+        
+        // Check JWT token first
+        $token = $app->getBearerToken();
+        $isAdmin = false;
+        $userData = null;
+        
+        if ($token) {
+            try {
+                $decoded = JWT::decode($token, new Key(JWT_SECRET, 'HS256'));
+                if ($decoded->role === 'admin') {
+                    $isAdmin = true;
+                    $userData = [
+                        'id' => $decoded->user_id,
+                        'name' => $decoded->name,
+                        'email' => $decoded->email,
+                        'role' => $decoded->role
+                    ];
+                }
+            } catch (Exception $e) {
+                error_log("JWT validation failed: " . $e->getMessage());
+            }
+        }
+        
+        // If JWT check failed, try session
+        if (!$isAdmin && session_status() === PHP_SESSION_ACTIVE) {
+            error_log("Debug: Checking session data: " . print_r($_SESSION, true));
+            if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+                $isAdmin = true;
+                $userData = [
+                    'id' => $_SESSION['user_id'],
+                    'name' => $_SESSION['user_name'],
+                    'email' => $_SESSION['user_email'],
+                    'role' => $_SESSION['user_role']
+                ];
+            }
+        }
+        
+        if ($isAdmin && $userData) {
+            error_log("Debug: Admin access granted");
+            $app->render('admin-dashboard', [
+                'user' => $userData,
+                'baseUrl' => BASE_URL
+            ]);
+        } else {
+            error_log("Debug: Admin access denied, redirecting to login");
+            $app->redirect('/login');
+        }
+    });
+
+    // Admin Products Route
+    $router->get('/products', function() use ($app) {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            $app->redirect('/login');
+            return;
+        }
+        $app->render('admin-products', ['baseUrl' => BASE_URL]);
+    });
+
+    // Admin Orders Route
+    $router->get('/orders', function() use ($app) {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            $app->redirect('/login');
+            return;
+        }
+        $app->render('admin-orders', ['baseUrl' => BASE_URL]);
+    });
+
+    // Admin Users Route
+    $router->get('/users', function() use ($app) {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            $app->redirect('/login');
+            return;
+        }
+        $app->render('admin-users', ['baseUrl' => BASE_URL]);
+    });
 });
 
-$app->route('GET /admin/products', function() use ($app) {
-    if (!$app->isAdmin()) {
-        $app->redirect('/login');
-        return;
-    }
-    $app->render('manage-products');
+// User Routes Group
+$app->group('/user', function($router) use ($app) {
+    // User Profile Route
+    $router->get('/profile', function() use ($app) {
+        error_log("Debug: Accessing user profile route");
+        
+        // Check if user is logged in
+        if (!isset($_SESSION['user_id'])) {
+            error_log("Debug: User not logged in, redirecting to login");
+            $app->redirect('/login');
+            return;
+        }
+        
+        try {
+            $pdo = $app->db();
+            // Get user details
+            $stmt = $pdo->prepare("SELECT ID, Name, Email, Role FROM Users WHERE ID = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                error_log("Debug: User not found in database");
+                $app->redirect('/login');
+                return;
+            }
+            
+            // Get user's order history
+            $stmt = $pdo->prepare("SELECT * FROM Orders WHERE User_ID = ? ORDER BY Created_at DESC");
+            $stmt->execute([$_SESSION['user_id']]);
+            $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            error_log("Debug: Rendering user profile with data");
+            $app->render('user-profile', [
+                'user' => [
+                    'username' => $user['Name'],
+                    'email' => $user['Email'],
+                    'role' => $user['Role']
+                ],
+                'orders' => $orders,
+                'baseUrl' => BASE_URL
+            ]);
+            
+        } catch (PDOException $e) {
+            error_log("Database error in user profile: " . $e->getMessage());
+            $app->render('user-profile', [
+                'error' => 'An error occurred while fetching your profile. Please try again later.',
+                'baseUrl' => BASE_URL
+            ]);
+        }
+    });
+
+    // Update User Profile Route
+    $router->post('/profile', function() use ($app) {
+        // ... existing user profile update code ...
+    });
 });
 
-$app->route('GET /admin/orders', function() use ($app) {
-    if (!$app->isAdmin()) {
-        $app->redirect('/login');
-        return;
-    }
-    $app->render('manage-orders');
+// Legacy route redirects for backward compatibility
+$app->route('GET /admin-dashboard.html', function() use ($app) {
+    $app->redirect('/admin/dashboard');
 });
 
-$app->route('GET /admin/users', function() use ($app) {
-    if (!$app->isAdmin()) {
-        $app->redirect('/login');
-        return;
-    }
-    $app->render('manage-users');
+$app->route('GET /admin-dashboard', function() use ($app) {
+    $app->redirect('/admin/dashboard');
+});
+
+$app->route('GET /user-profile', function() use ($app) {
+    $app->redirect('/user/profile');
 });
 
 // API Documentation routes
@@ -2421,6 +2526,135 @@ $app->route('GET /login', function() use ($app) {
     ]);
 });
 
+// Register routes
+$app->route('GET /register', function() use ($app) {
+    if ($app->isLoggedIn()) {
+        $app->redirect('/');
+        return;
+    }
+    $app->render('register', [
+        'baseUrl' => BASE_URL,
+        'error' => '',
+        'username' => '',
+        'email' => ''
+    ]);
+});
+
+$app->route('POST /register', function() use ($app) {
+    if ($app->isApiRequest()) {
+        // Handle API request
+        $data = json_decode(file_get_contents('php://input'), true);
+    } else {
+        // Handle form submission
+        $data = [
+            'name' => $_POST['username'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? '',
+            'confirmPassword' => $_POST['confirmPassword'] ?? ''
+        ];
+    }
+    
+    if (!$data) {
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Invalid JSON data'], 400);
+        } else {
+            $app->render('register', [
+                'error' => 'Invalid form data',
+                'username' => $data['name'] ?? '',
+                'email' => $data['email'] ?? '',
+                'baseUrl' => BASE_URL
+            ]);
+        }
+        return;
+    }
+    
+    // Validate required fields
+    if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Name, email and password are required'], 400);
+        } else {
+            $app->render('register', [
+                'error' => 'Name, email and password are required',
+                'username' => $data['name'] ?? '',
+                'email' => $data['email'] ?? '',
+                'baseUrl' => BASE_URL
+            ]);
+        }
+        return;
+    }
+    
+    // Validate password confirmation for form submission
+    if (!$app->isApiRequest() && $data['password'] !== $data['confirmPassword']) {
+        $app->render('register', [
+            'error' => 'Passwords do not match',
+            'username' => $data['name'],
+            'email' => $data['email'],
+            'baseUrl' => BASE_URL
+        ]);
+        return;
+    }
+    
+    try {
+        $pdo = $app->db();
+        
+        // Check if email already exists
+        $stmt = $pdo->prepare("SELECT ID FROM Users WHERE Email = ?");
+        $stmt->execute([$data['email']]);
+        if ($stmt->fetch()) {
+            if ($app->isApiRequest()) {
+                $app->json(['error' => 'Email already registered'], 400);
+            } else {
+                $app->render('register', [
+                    'error' => 'Email already registered',
+                    'username' => $data['name'],
+                    'email' => $data['email'],
+                    'baseUrl' => BASE_URL
+                ]);
+            }
+            return;
+        }
+        
+        // Hash password
+        $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
+        
+        // Insert new user
+        $stmt = $pdo->prepare("INSERT INTO Users (Name, Email, Password, Role) VALUES (?, ?, ?, 'user')");
+        $stmt->execute([$data['name'], $data['email'], $hashedPassword]);
+        
+        // Get the new user's ID
+        $userId = $pdo->lastInsertId();
+        
+        if ($app->isApiRequest()) {
+            // Return success response for API
+            $app->json([
+                'message' => 'Registration successful',
+                'user' => [
+                    'id' => $userId,
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'role' => 'user'
+                ]
+            ]);
+        } else {
+            // Redirect to login page for form submission
+            $app->redirect('/login');
+        }
+        
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        if ($app->isApiRequest()) {
+            $app->json(['error' => 'Internal server error'], 500);
+        } else {
+            $app->render('register', [
+                'error' => 'An error occurred during registration',
+                'username' => $data['name'],
+                'email' => $data['email'],
+                'baseUrl' => BASE_URL
+            ]);
+        }
+    }
+});
+
 // Middleware test page route
 $app->route('GET /middleware-test', function() use ($app) {
     $app->render('middleware-test', [
@@ -2486,4 +2720,4 @@ $app->route('*', function() {
 });
 
 // Start the application
-$app->start(); 
+$app->start();

@@ -7,11 +7,12 @@ document.addEventListener("DOMContentLoaded", function () {
             event.preventDefault();
   
             const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+            const password = document.getElementById('password').value.trim();
   
             if (!email || !password) {
                 if (errorMessage) {
                     errorMessage.textContent = 'Please enter both email and password.';
+                    errorMessage.className = 'error-message';
                 } else {
                     alert('Please enter both email and password.');
                 }
@@ -19,11 +20,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
   
             try {
-                const response = await fetch("/login", {
-                    method: "POST",
+                const response = await fetch('/login', {
+                    method: 'POST',
                     headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ email, password })
                 });
@@ -31,12 +31,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 const result = await response.json();
   
                 if (response.ok && result.token) {
-                    // Store JWT and user info in localStorage
-                    localStorage.setItem("token", result.token);
-                    localStorage.setItem("user", JSON.stringify(result.user));
-                    localStorage.setItem("loggedInUser", JSON.stringify(result.user));
+                    // Clear any existing session data
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('loggedInUser');
                     
-                    console.log("Login successful. User role:", result.user.role);
+                    // Store new session data
+                    localStorage.setItem('token', result.token);
+                    localStorage.setItem('user', JSON.stringify(result.user));
+                    localStorage.setItem('loggedInUser', JSON.stringify(result.user));
                     
                     // Show success message
                     if (errorMessage) {
@@ -44,9 +47,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         errorMessage.className = 'success-message';
                     }
                     
-                    // Redirect after a short delay
+                    // Redirect based on user role
                     setTimeout(() => {
-                        window.location.href = "/";
+                        if (result.user.role === 'admin') {
+                            window.location.href = "/admin/dashboard";
+                        } else {
+                            window.location.href = "/";
+                        }
                     }, 1000);
                 } else {
                     if (errorMessage) {
@@ -56,13 +63,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         alert(result.error || "Invalid email or password.");
                     }
                 }
-            } catch (err) {
-                console.error("Login error:", err);
+            } catch (error) {
+                console.error('Login error:', error);
                 if (errorMessage) {
-                    errorMessage.textContent = "An error occurred. Please try again.";
+                    errorMessage.textContent = "An error occurred during login. Please try again.";
                     errorMessage.className = 'error-message';
                 } else {
-                    alert("An error occurred. Please try again.");
+                    alert("An error occurred during login. Please try again.");
                 }
             }
         });

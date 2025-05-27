@@ -1,23 +1,45 @@
 document.addEventListener("DOMContentLoaded", function () {
     console.log("Cart page loaded");
     
-    // Check if user is logged in
-    const token = localStorage.getItem("token");
-    if (!token) {
-        alert("Please log in to view your cart");
-        window.location.href = "/login";
-        return;
+    // Only check for login if we're on the cart page
+    if (window.location.pathname === "/cart") {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            const cartContainer = document.getElementById("cart-items");
+            if (cartContainer) {
+                cartContainer.innerHTML = `
+                    <div class="login-prompt">
+                        <p>Please log in to view your cart.</p>
+                        <button onclick="window.location.href='/login'">Login</button>
+                    </div>
+                `;
+            }
+            return;
+        }
+        // Load cart items only if we're on the cart page and user is logged in
+        loadCartItems();
     }
-
-    // Load cart items
-    loadCartItems();
 });
 
 async function loadCartItems() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        const cartContainer = document.getElementById("cart-items");
+        if (cartContainer) {
+            cartContainer.innerHTML = `
+                <div class="login-prompt">
+                    <p>Please log in to view your cart.</p>
+                    <button onclick="window.location.href='/login'">Login</button>
+                </div>
+            `;
+        }
+        return;
+    }
+
     try {
         const response = await fetch("/cart", {
             headers: {
-                "Authorization": `Bearer ${localStorage.getItem("token")}`,
+                "Authorization": `Bearer ${token}`,
                 "Accept": "application/json"
             }
         });
@@ -134,12 +156,20 @@ async function removeItem(productId) {
 
 // Function to add item to cart
 async function addToCart(productId) {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        if (confirm("Please log in to add items to your cart. Would you like to log in now?")) {
+            window.location.href = "/login";
+        }
+        return;
+    }
+
     try {
-        const response = await fetch("http://localhost:8080/cart/add", {
+        const response = await fetch("/cart/add", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + localStorage.getItem("token")
+                "Authorization": `Bearer ${token}`
             },
             body: JSON.stringify({
                 product_id: productId,

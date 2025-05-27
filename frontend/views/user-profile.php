@@ -44,90 +44,30 @@ echo "<!-- Debug: baseUrl = " . (isset($baseUrl) ? $baseUrl : 'not set') . " -->
     </nav>
   </header>
 
+  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
+
   <main class="profile-container">
-    <div class="profile-box">
-      <h2>User Profile</h2>
-      
-      <?php if(isset($error)): ?>
-        <div class="error-message"><?php echo $error; ?></div>
-      <?php endif; ?>
+    <h2>User Profile</h2>
 
-      <?php if(isset($success)): ?>
-        <div class="success-message"><?php echo $success; ?></div>
-      <?php endif; ?>
-
-      <form id="profileForm" method="POST" action="<?php echo $baseUrl; ?>/user-profile">
-        <div class="input-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" value="<?php echo isset($user['username']) ? htmlspecialchars($user['username']) : ''; ?>" required>
-        </div>
-
-        <div class="input-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" value="<?php echo isset($user['email']) ? htmlspecialchars($user['email']) : ''; ?>" required>
-        </div>
-
-        <div class="input-group">
-          <label for="currentPassword">Current Password</label>
-          <input type="password" id="currentPassword" name="currentPassword">
-        </div>
-
-        <div class="input-group">
-          <label for="newPassword">New Password</label>
-          <input type="password" id="newPassword" name="newPassword">
-        </div>
-
-        <div class="input-group">
-          <label for="confirmPassword">Confirm New Password</label>
-          <input type="password" id="confirmPassword" name="confirmPassword">
-          <p id="passwordError" class="error-message"></p>
-        </div>
-
-        <button type="submit" class="btn-update">Update Profile</button>
-      </form>
-
-      <div class="order-history">
-        <h3>Order History</h3>
-        <?php if(isset($orders) && !empty($orders)): ?>
-          <div class="orders-list">
-            <?php foreach($orders as $order): ?>
-              <div class="order-item">
-                <p>Order #<?php echo htmlspecialchars($order['id']); ?></p>
-                <p>Date: <?php echo htmlspecialchars($order['date']); ?></p>
-                <p>Total: $<?php echo htmlspecialchars($order['total']); ?></p>
-                <p>Status: <?php echo htmlspecialchars($order['status']); ?></p>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        <?php else: ?>
-          <p>No orders found.</p>
-        <?php endif; ?>
+    <section class="profile-card">
+      <div class="profile-info">
+        <p><strong>Username:</strong> <span id="username">Loading...</span></p>
+        <p><strong>Email:</strong> <span id="email">Loading...</span></p>
       </div>
-    </div>
+    </section>
+
+    <section class="order-history">
+      <h3>Order History</h3>
+      <div id="order-list">
+        <!-- Orders will be dynamically added here -->
+      </div>
+    </section>
   </main>
 
   <footer>
     <p>&copy; 2025 E-Commerce Website. All rights reserved.</p>
   </footer>
 
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/auth.js"></script>
-  <script>
-    // Password confirmation validation
-    document.getElementById("profileForm").addEventListener("submit", function(event) {
-      let newPassword = document.getElementById("newPassword").value;
-      let confirmPassword = document.getElementById("confirmPassword").value;
-      let passwordError = document.getElementById("passwordError");
-
-      if (newPassword && newPassword !== confirmPassword) {
-        event.preventDefault();
-        passwordError.textContent = "Passwords do not match!";
-        passwordError.style.color = "red";
-      } else {
-        passwordError.textContent = "";
-      }
-    });
-  </script>
   <script src="<?php echo $baseUrl; ?>/frontend/assets/js/user-profile.js"></script>
-  <script src="<?php echo $baseUrl; ?>/frontend/assets/js/navbar.js"></script>
 </body>
 </html> 

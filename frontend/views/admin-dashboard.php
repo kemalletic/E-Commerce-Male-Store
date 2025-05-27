@@ -29,7 +29,7 @@ ini_set('display_errors', 1);
       </div>
       <a href="<?php echo $baseUrl; ?>/cart">Cart</a>
       <a href="<?php echo $baseUrl; ?>/user-profile">Profile</a>
-      <a href="<?php echo $baseUrl; ?>/admin/dashboard" id="admin-dashboard-btn" style="display: none;">Admin Dashboard</a>
+      <a href="<?php echo $baseUrl; ?>/admin-dashboard" id="admin-dashboard-btn" style="display: none;">Admin Dashboard</a>
       <div class="auth-links">
         <a href="<?php echo $baseUrl; ?>/login" id="login-btn">Login</a>
         <a href="<?php echo $baseUrl; ?>/register" id="register-btn">Register</a>
