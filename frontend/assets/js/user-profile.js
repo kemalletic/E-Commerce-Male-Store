@@ -1,7 +1,110 @@
-document.addEventListener("DOMContentLoaded", function () {
-    checkLoginStatus();
-    document.getElementById("logout-btn").addEventListener("click", logout);
+document.addEventListener('DOMContentLoaded', function() {
+    // Get user data from localStorage
+    const userStr = localStorage.getItem('user') || localStorage.getItem('loggedInUser');
+    let user = null;
+    
+    if (userStr) {
+        try {
+            user = JSON.parse(userStr);
+            console.log('User data:', user); // Debug log
+            
+            // Update profile information
+            const usernameElement = document.getElementById('username');
+            const emailElement = document.getElementById('email');
+            
+            if (usernameElement) {
+                usernameElement.textContent = user.name || user.username || 'N/A';
+            }
+            if (emailElement) {
+                emailElement.textContent = user.email || 'N/A';
+            }
+            
+            // Fetch order history if user has an ID
+            if (user.id) {
+                fetchOrderHistory(user.id);
+            } else {
+                console.error('User ID not found');
+                document.getElementById('order-list').innerHTML = '<p>Error loading order history.</p>';
+            }
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+            showError('Error loading user data');
+        }
+    } else {
+        // Redirect to login if no user data found
+        window.location.href = '/login';
+    }
 });
+
+async function fetchOrderHistory(userId) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+
+        const response = await fetch(`/orders/user/${userId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch order history');
+        }
+
+        const orders = await response.json();
+        displayOrders(orders);
+    } catch (error) {
+        console.error('Error fetching order history:', error);
+        document.getElementById('order-list').innerHTML = '<p>Error loading order history.</p>';
+    }
+}
+
+function displayOrders(orders) {
+    const orderList = document.getElementById('order-list');
+    if (!orderList) return;
+
+    if (!orders || orders.length === 0) {
+        orderList.innerHTML = '<p>No orders found.</p>';
+        return;
+    }
+
+    orderList.innerHTML = orders.map(order => `
+        <div class="order-card">
+            <div class="order-header">
+                <h4>Order #${order.id}</h4>
+                <span class="status ${order.status.toLowerCase()}">${order.status}</span>
+            </div>
+            <div class="order-details">
+                <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                <p><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+            </div>
+            <div class="order-products">
+                <h4>Products</h4>
+                ${order.items.map(item => `
+                    <div class="order-item">
+                        <div class="order-item-image-container">
+                            <img src="/frontend/assets/images/${item.image_url || 'placeholder.jpg'}" alt="${item.name}" class="order-item-image">
+                        </div>
+                        <div class="order-item-details">
+                            <p><strong>${item.name}</strong></p>
+                            <p>Quantity: ${item.quantity}</p>
+                            <p>Price: $${item.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function showError(message) {
+    const profileInfo = document.querySelector('.profile-info');
+    if (profileInfo) {
+        profileInfo.innerHTML = `<p class="error-message">${message}</p>`;
+    }
+}
 
 // Function to check if the user is logged in
 function checkLoginStatus() {

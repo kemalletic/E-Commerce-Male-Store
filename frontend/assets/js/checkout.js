@@ -78,7 +78,7 @@ function handleCheckoutForm(event) {
     alert("Checkout successful. Your order will be processed shortly.");
 
     // Redirect to home page (index.html)
-    window.location.href = "../index.html";
+    window.location.href = "/";
 }
 
 
